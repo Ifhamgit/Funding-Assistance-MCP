@@ -8,7 +8,7 @@ cross-nonprofit access.
 
 | Document | Contents |
 |---|---|
-| [docs/SPEC.md](docs/SPEC.md) | **Specification**: requirements R-01..R-25, state machine, budget rules, data model, MCP tool contracts, permissions, acceptance criteria AC-01..AC-25, task plan + gates, production OAuth design, open questions, **changelog** |
+| [docs/SPEC.md](docs/SPEC.md) (initial: [v1.0 snapshot](docs/SPEC_v1.0_initial.md)) | **Specification**: requirements R-01..R-25, state machine, budget rules, data model, MCP tool contracts, permissions, acceptance criteria AC-01..AC-25, task plan + gates, production OAuth design, open questions, **changelog** |
 | [docs/TRACEABILITY.md](docs/TRACEABILITY.md) | Requirement → implementation → test map |
 | [docs/AI_LOG.md](docs/AI_LOG.md) | Raw AI-workflow notes, taken while working |
 | `git log` | Spec v1.0 committed first (`fc49712`), then one commit per task T1–T9 |
