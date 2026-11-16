@@ -106,7 +106,7 @@ I worked with Claude Code under the SPEC §8 loop: spec, then failing tests, the
 commit. I reviewed every step and checked it against independent evidence. Details are in
 [docs/AI_LOG.md](docs/AI_LOG.md).
 
-1. **Requirements.** Prompt: *"check we did not miss anything crucial."* A second, line-by-line pass over the brief found
+1. **Requirements.** A second, line-by-line pass over the brief found
    points the first summary had missed:
    - stored text must not grant permissions;
    - participant and fund must belong to the caller's nonprofit;
