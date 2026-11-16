@@ -1,4 +1,4 @@
-# AI Workflow Log (raw notes, condensed into README §AI)
+# AI Workflow Log (raw notes, condensed into README §4)
 
 Tool: Claude Code (Claude Opus 5.5) in VS Code. Running notes captured during the work, not reconstructed afterwards.
 

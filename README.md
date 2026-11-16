@@ -8,6 +8,7 @@ role violations and cross-nonprofit access.
 | Document | Contents |
 |---|---|
 | [docs/SPEC.md](docs/SPEC.md) | Specification: requirements, state machine, budget rules, data model, MCP tool contracts, permissions, acceptance criteria, task plan, production OAuth, open questions, changelog. Initial version: [v1.0 snapshot](docs/SPEC_v1.0_initial.md) |
+| [docs/TOOL_SCHEMAS.md](docs/TOOL_SCHEMAS.md) | Exact JSON input/output schemas of all 10 tools, generated from the server (a test keeps it in sync) |
 | [docs/TRACEABILITY.md](docs/TRACEABILITY.md) | Requirement → implementation → test map |
 | [docs/AI_LOG.md](docs/AI_LOG.md) | AI workflow notes, written during the work |
 
@@ -25,6 +26,7 @@ uv run python -m pytest                             # all tests (~35 s)
 uv run python -m pytest -m "not e2e and not slow"   # fast subset (~3 s)
 uv run python scripts/demo_client.py                # MCP client demo (separate data/demo.db)
 uv run python tools/mutate_approval_guard.py m1     # race tests must FAIL against a naive approval
+uv run python -m funding_mcp.schema_doc            # regenerate docs/TOOL_SCHEMAS.md
 uv run ruff check . && uv run ruff format --check .
 ```
 
@@ -34,7 +36,7 @@ with `$env:FUNDING_STAFF_ID="stf_cb_case_worker"`.
 
 **Configuration:**
 - `FUNDING_STAFF_ID`: the trusted fixture identity for this server process.
-- `FUNDING_DB_PATH`: the SQLite file.
+- `FUNDING_DB_PATH`: the SQLite file (default `data/funding.db` in the repo).
 - `FUNDING_LOG_LEVEL` / `FUNDING_LOG_FILE`: logging. Logs go to stderr and optionally a file, never stdout.
 
 **Identities:**
@@ -77,8 +79,9 @@ with `$env:FUNDING_STAFF_ID="stf_cb_case_worker"`.
 | `test_requests.py` | create, validation, idempotency key, filters, summary totals | 23 passed |
 | `test_lifecycle.py` | business-case example, insufficient funds, retries, invalid transitions, invariants | 16 passed |
 | `test_concurrency.py` | 2-way race ×25, 20-way race, 6-process race, concurrent duplicate approve/pay | 5 passed |
+| `test_schema_doc.py` | documented tool schemas match the server | 1 passed |
 | `test_e2e_mcp.py` | through MCP over stdio: discovery, 3-identity workflow, missing identity, smuggled args, schema/role/tenant errors, stdout purity | 13 passed |
-| **Total** | | **138 passed in 35.8 s** |
+| **Total** | | **139 passed in 32.1 s** |
 
 **How the concurrency protection was verified:**
 - Two $300 approvals race for a $500 fund, repeated 25 times on fresh databases: every round gives exactly one approval

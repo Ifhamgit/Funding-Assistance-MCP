@@ -110,7 +110,8 @@ request may fail approval later if the fund is drawn down first.
 
 | Field | Rule |
 |---|---|
-| `amount` | string, regex `^(0|[1-9][0-9]{0,6})(\.[0-9]{1,2})?$`, value > 0.00 and ≤ 1,000,000.00. Rejects `"1.001"`, `"-5"`, `"0"`, `"1e3"`, `" 5"`, JSON numbers. |
+| `amount` | string matching `AMOUNT_PATTERN` (below), value > 0.00 and ≤ 1,000,000.00. Rejects `"1.001"`, `"-5"`, `"0"`, `"1e3"`, `" 5"`, JSON numbers. |
+| `name_contains` | optional, 1–100 chars after trimming; literal, case-insensitive substring (no wildcards) |
 | `purpose` | one of `rent`, `utilities`, `transportation`, `other` |
 | `description` | optional, 1–500 chars after trimming; **required when `purpose = other`** |
 | `reason` (reject) | optional, 1–500 chars after trimming |
@@ -119,6 +120,8 @@ request may fail approval later if the fund is drawn down first.
 | IDs | non-empty strings ≤ 100 chars; existence checked inside caller's nonprofit |
 | `limit` (lists) | integer 1–100, default 50 |
 | any other argument | rejected (`VALIDATION_ERROR`, R-04) |
+
+`AMOUNT_PATTERN` (in `money.py`, also published in the tool's input schema): `^(0|[1-9][0-9]{0,6})(\.[0-9]{1,2})?$`
 
 ### 3.4 Evaluation order (deterministic error precedence)
 
@@ -189,14 +192,15 @@ MutationResult { "request": Request, "fund": FundSummary, "replayed": boolean }
 | `get_funding_summary` | all | `fund_id?` | `{funds: FundSummary[], totals: {allocation, committed, paid, available, pending: Money}}` | none | NOT_FOUND (fund_id given but not in caller's nonprofit) |
 
 Read tools are `readOnlyHint: true`. `approve_request`, `reject_request`, `record_payment` are
-`idempotentHint: true` (R-14). Tool descriptions state the role required and the money effect in one sentence each.
+`idempotentHint: true` (R-14). Each tool description states the role required and the money effect.
+The exact JSON input/output schemas, generated from the running server, are in [TOOL_SCHEMAS.md](TOOL_SCHEMAS.md).
 
 ### 5.3 Error envelope
 
 `isError: true`; `structuredContent` and the text content both carry:
 
 ```json
-{ "error": { "code": "INSUFFICIENT_FUNDS", "message": "Fund fnd_cb_transit has 200.00 available; request needs 300.00.", "details": { "available_cents": 20000, "requested_cents": 30000 } } }
+{ "error": { "code": "INSUFFICIENT_FUNDS", "message": "Fund fnd_cb_transit has 200.00 available; request needs 300.00.", "details": { "fund_id": "fnd_cb_transit", "available_cents": 20000, "requested_cents": 30000 } } }
 ```
 
 | Code | Meaning |
@@ -248,7 +252,7 @@ Seed state (§9) unless stated. "Unchanged" means request rows, payment rows and
 | AC-07 | R-14 | Approve an `approved` request again | success, `replayed: true`; committed unchanged |
 | AC-08 | R-14,R-13 | Record payment twice on the same request | 2nd returns `replayed: true` with the original payment; still one payment row; paid counted once |
 | AC-09 | R-10 | Pay a `pending` request; approve a `rejected`; reject an `approved`; approve a `paid` | `INVALID_TRANSITION` each; unchanged |
-| AC-10 | R-17 | 2 requests of 300.00 on a fund with 500.00 available, approved concurrently by separate connections/processes | exactly one `approved`, one `INSUFFICIENT_FUNDS`; committed 300.00; invariants hold. Repeated many times; also N-way race |
+| AC-10 | R-17 | 2 requests of 300.00 on a fund with 500.00 available, approved concurrently by separate connections/processes | exactly one `approved`, one `INSUFFICIENT_FUNDS`; committed 300.00; invariants hold. Repeated many times; also N-way race. *(v1.1)* N concurrent approvals of the **same** request, or N concurrent payments of one request → exactly one effect, the rest `replayed: true` |
 | AC-11 | R-02 | Case worker approves; manager pays; finance creates; manager creates | `FORBIDDEN`; unchanged |
 | AC-12 | R-03 | CB staff `get_request` on a Harbor Aid request; approve it; summary for HA fund | `NOT_FOUND` (same as random ID); unchanged |
 | AC-13 | R-03 | CB staff list participants / funds / requests | only CB records |
@@ -259,9 +263,9 @@ Seed state (§9) unless stated. "Unchanged" means request rows, payment rows and
 | AC-18 | R-15 | amounts `"0"`, `"-1.00"`, `"1.001"`, `"abc"`, `"1000000.01"`, JSON number `300` | `VALIDATION_ERROR`; nothing created |
 | AC-19 | R-15 | amount `"0.10"` + `"0.20"` approved on same fund | committed exactly 30 cents |
 | AC-20 | R-09 | create twice with same `idempotency_key` + payload; then same key, different amount | 1st/2nd same `request_id`, 2nd `replayed: true`; 3rd `IDEMPOTENCY_CONFLICT`; one row |
-| AC-21 | R-03.. R-21 | **E2E over stdio MCP**: list tools (all 10 present with input+output schemas); case worker creates → manager approves → finance pays → summary | final 300.00 paid / 0.00 committed / 9,700.00 available |
+| AC-21 | R-07, R-11, R-13, R-19, R-21 | **E2E over stdio MCP**: list tools (all 10 present with input+output schemas); case worker creates → manager approves → finance pays → summary | final 300.00 paid / 0.00 committed / 9,700.00 available |
 | AC-22 | R-23 | Run reset twice; mutate data in between | identical seed state after each reset |
-| AC-23 | R-24 | Run server over stdio | stdout carries only protocol messages (E2E handshake succeeds); logs appear on stderr |
+| AC-23 | R-24 | Run server over stdio | stdout carries only protocol messages; logs appear on stderr. *(v1.1)* Verified by driving the server with raw JSON-RPC and parsing every stdout line |
 | AC-24 | R-08 | Tool list | contains no update/edit tool for requests |
 | AC-25 | R-16 | After every test scenario | stored counters equal sums derived from requests; invariants hold |
 
@@ -273,7 +277,7 @@ reality differs (changelog) → commit.** A task is done only when its gate pass
 | Task | Depends | Deliverable | Gate (completion criteria) |
 |---|---|---|---|
 | T0 Spec | — | this document, committed before any code | reviewed against the brief line by line |
-| T1 Skeleton | T0 | `pyproject`, pinned deps (`uv.lock`), package layout, pytest/ruff config | `uv run pytest` runs; `ruff` clean |
+| T1 Skeleton | T0 | `pyproject`, pinned deps (`uv.lock`), package layout, pytest/ruff config | `uv run python -m pytest` runs; `ruff` clean |
 | T2 Money | T1 | `money.py` parse/format | AC-18, AC-19 unit tests green |
 | T3 Storage + seed/reset | T1 | schema DDL, `funding-reset` | AC-22; CHECK/FK constraints proven by tests |
 | T4 Identity + policy | T3 | `resolve_caller`, `authorize`, error types | AC-11, AC-15 at service level |
@@ -341,4 +345,5 @@ Seed contains no requests, so the demo reproduces the business-case example exac
 | 1.1 | 2026-11-16 | §5.3 clarified: an unknown **tool name** is reported by the MCP SDK's own error, not our envelope; identity is still checked first | The envelope covers tools we define; name resolution belongs to the protocol layer |
 | 1.1 | 2026-11-16 | AC-23 made concrete: drive the server with raw JSON-RPC and parse every stdout line as JSON-RPC; also assert the log line is on stderr | "E2E handshake succeeds" alone can't prove nothing else leaks to stdout |
 | 1.1 | 2026-11-16 | Commands documented as `uv run python -m funding_mcp.{seed,server}`; `funding-reset` / `funding-mcp` scripts remain as aliases | On the development machine, Windows Application Control blocked uv's generated `.exe` launchers (`os error 4551`) |
+| 1.1 | 2026-11-16 | Documentation review: AC-10/AC-23 rows now state their v1.1 wording (previously only in this log); §5.3 example shows the real `details` (`fund_id` was missing); `AMOUNT_PATTERN` moved out of the §3.3 table (its `\|` broke the table on GitHub); `name_contains` rule added; exact schemas published in [TOOL_SCHEMAS.md](TOOL_SCHEMAS.md), generated from the server and checked by a test | Spec text had drifted from code in small ways; generated schemas cannot drift |
 | 1.1 | 2026-11-16 | Implementation note: Python 3.12, `mcp` 2.3.0 (`MCPServer`), SQLite (WAL). The SDK advertises empty `prompts`/`resources` capabilities by default; none are registered (out of scope) | Recorded for reviewers; no behavior change |
