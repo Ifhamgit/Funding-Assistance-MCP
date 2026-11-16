@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 import pytest
-from conftest import CB_ALEX, CB_CASE, CB_RENT, HA_GENERAL, snapshot
+from conftest import CB_ALEX, CB_CASE, CB_RENT, HA_GENERAL, snapshot, subprocess_env
 
 from funding_mcp import db
 from funding_mcp.seed import reset_database
@@ -117,7 +117,7 @@ def test_reset_cli_uses_env_path(tmp_path):
     target = tmp_path / "cli.db"
     result = subprocess.run(
         [sys.executable, "-m", "funding_mcp.seed"],
-        env={"FUNDING_DB_PATH": str(target), "SYSTEMROOT": "C:\\Windows", "PATH": ""},
+        env=subprocess_env(FUNDING_DB_PATH=str(target), SYSTEMROOT="C:\\Windows", PATH=""),
         capture_output=True,
         text=True,
         timeout=60,

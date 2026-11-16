@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import pytest
-from conftest import CB_ALEX, CB_CASE, CB_FIN, CB_PM, CB_RENT, HA_PM, snapshot
+from conftest import CB_ALEX, CB_CASE, CB_FIN, CB_PM, CB_RENT, HA_PM, snapshot, subprocess_env
 from mcp import Client, StdioServerParameters
 
 from funding_mcp import db
@@ -41,7 +41,7 @@ def anyio_backend():
 
 
 def server(db_path, staff_id: str | None) -> StdioServerParameters:
-    env = {"FUNDING_DB_PATH": str(db_path)}
+    env = subprocess_env(FUNDING_DB_PATH=str(db_path))
     if staff_id is not None:
         env["FUNDING_STAFF_ID"] = staff_id
     return StdioServerParameters(command=sys.executable, args=["-m", "funding_mcp.server"], env=env)
@@ -99,6 +99,27 @@ async def test_business_case_workflow_over_mcp(db_path):
 
     retry = await call(db_path, CB_FIN, "record_payment", {"request_id": request_id})
     assert retry.structured_content["replayed"] is True  # R-14 over MCP
+
+
+async def test_every_tool_is_callable_over_mcp(db_path):
+    """R-21: each of the 10 tools works through the MCP wiring, not only at the service layer."""
+    async with Client(server(db_path, CB_CASE)) as client:
+        me = (await client.call_tool("get_current_staff", {})).structured_content
+        assert (me["role"], me["nonprofit_id"]) == ("case_worker", "np_community_bridge")
+        found = (await client.call_tool("list_participants", {"name_contains": "alex"})).structured_content
+        assert found["participants"] == [{"participant_id": CB_ALEX, "full_name": "Alex Johnson"}]
+        created = await client.call_tool(
+            "create_assistance_request",
+            {"participant_id": CB_ALEX, "fund_id": CB_RENT, "purpose": "utilities", "amount": "80.00"},
+        )
+        request_id = created.structured_content["request"]["request_id"]
+    async with Client(server(db_path, CB_PM)) as client:
+        rejected = await client.call_tool("reject_request", {"request_id": request_id, "reason": "Duplicate"})
+        assert rejected.structured_content["request"]["status"] == "rejected"
+        listed = (await client.call_tool("list_requests", {"status": "rejected", "limit": 5})).structured_content
+        assert [r["request_id"] for r in listed["requests"]] == [request_id]
+        unknown = await client.call_tool("delete_request", {"request_id": request_id})
+        assert unknown.is_error  # unknown tool name: reported by the SDK (SPEC §12, v1.1)
 
 
 @pytest.mark.parametrize("staff_id", [None, "", "stf_does_not_exist"])
@@ -170,7 +191,7 @@ def test_stdout_carries_only_protocol_and_logs_go_to_stderr(db_path):
     ]
     proc = subprocess.Popen(
         [sys.executable, "-m", "funding_mcp.server"],
-        env={"FUNDING_DB_PATH": str(db_path), "FUNDING_STAFF_ID": CB_FIN, "SYSTEMROOT": "C:\\Windows", "PATH": ""},
+        env=subprocess_env(FUNDING_DB_PATH=str(db_path), FUNDING_STAFF_ID=CB_FIN, SYSTEMROOT="C:\\Windows", PATH=""),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -198,7 +219,7 @@ def test_server_refuses_to_start_without_initialized_db(tmp_path):
     proc = subprocess.run(
         [sys.executable, "-m", "funding_mcp.server"],
         input="",
-        env={"FUNDING_DB_PATH": str(missing), "FUNDING_STAFF_ID": CB_FIN, "SYSTEMROOT": "C:\\Windows", "PATH": ""},
+        env=subprocess_env(FUNDING_DB_PATH=str(missing), FUNDING_STAFF_ID=CB_FIN, SYSTEMROOT="C:\\Windows", PATH=""),
         capture_output=True,
         text=True,
         timeout=60,

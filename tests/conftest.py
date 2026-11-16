@@ -1,9 +1,19 @@
+import os
 import sqlite3
 
 import pytest
 
 from funding_mcp import db
 from funding_mcp.seed import reset_database
+
+
+def subprocess_env(**env: str) -> dict[str, str]:
+    """Environment for server/CLI subprocesses. Forwards coverage's subprocess hook when measuring coverage
+    (the MCP stdio client passes only a fixed whitelist of variables). No effect on behavior."""
+    if "COVERAGE_PROCESS_CONFIG" in os.environ:
+        env["COVERAGE_PROCESS_CONFIG"] = os.environ["COVERAGE_PROCESS_CONFIG"]
+    return env
+
 
 # Seed IDs (SPEC §9)
 CB_CASE = "stf_cb_case_worker"

@@ -26,7 +26,8 @@ uv run python -m pytest                             # all tests (~35 s)
 uv run python -m pytest -m "not e2e and not slow"   # fast subset (~3 s)
 uv run python scripts/demo_client.py                # MCP client demo (separate data/demo.db)
 uv run python tools/mutate_approval_guard.py m1     # race tests must FAIL against a naive approval
-uv run python -m funding_mcp.schema_doc            # regenerate docs/TOOL_SCHEMAS.md
+uv run python -m coverage run -m pytest && uv run python -m coverage combine && uv run python -m coverage report
+uv run python -m funding_mcp.schema_doc             # regenerate docs/TOOL_SCHEMAS.md
 uv run ruff check . && uv run ruff format --check .
 ```
 
@@ -69,7 +70,19 @@ with `$env:FUNDING_STAFF_ID="stf_cb_case_worker"`.
 - **Errors.** Errors return `isError: true` with `{"error": {"code", "message", "details"}}`. The codes are listed in
   SPEC §5.3. Every write runs in one transaction, so a failure leaves state unchanged.
 
-## 3. Verification — actual results (2026-11-16, Windows 11, Python 3.12.10)
+**Key assumptions** (all 11, with questions for the business, in SPEC §11): USD only, with a $1,000,000 cap per
+request; funds are always active, with no purpose restrictions; pending requests reserve nothing; one staff record
+means one role in one nonprofit; retries replay rather than error; approved-but-unpaid money stays committed
+(cancellation is out of scope); a rejection is final.
+
+## 3. Validation approach and results (2026-11-16, Windows 11, Python 3.12.10)
+
+**Approach.** Each test traces to an acceptance criterion and was written before the code. Layers: unit tests (money);
+database-constraint tests; service tests (each compares a full state snapshot before and after); concurrency tests
+(threads and OS processes); a mutation check; end-to-end tests over stdio; a fresh-clone rerun.
+
+**Coverage** (lines and branches, including the server subprocesses): **98%**. Uncovered: the internal-error handler,
+two "cannot happen" guards, the negative-money guard, the log-file handler and a CLI `main`.
 
 | Test file | Covers | Result |
 |---|---|---|
@@ -80,8 +93,8 @@ with `$env:FUNDING_STAFF_ID="stf_cb_case_worker"`.
 | `test_lifecycle.py` | business-case example, insufficient funds, retries, invalid transitions, invariants | 16 passed |
 | `test_concurrency.py` | 2-way race ×25, 20-way race, 6-process race, concurrent duplicate approve/pay | 5 passed |
 | `test_schema_doc.py` | documented tool schemas match the server | 1 passed |
-| `test_e2e_mcp.py` | through MCP over stdio: discovery, 3-identity workflow, missing identity, smuggled args, schema/role/tenant errors, stdout purity | 13 passed |
-| **Total** | | **139 passed in 32.1 s** |
+| `test_e2e_mcp.py` | through MCP over stdio: discovery, every tool called, 3-identity workflow, missing identity, smuggled args, schema/role/tenant errors, stdout purity | 14 passed |
+| **Total** | | **140 passed in 35.7 s** |
 
 **How the concurrency protection was verified:**
 - Two $300 approvals race for a $500 fund, repeated 25 times on fresh databases: every round gives exactly one approval
@@ -98,7 +111,7 @@ with `$env:FUNDING_STAFF_ID="stf_cb_case_worker"`.
 **Not run:**
 - no real AI client (such as Claude Desktop) was connected; the demo script plays that role;
 - no Linux or macOS run;
-- no CI or coverage report.
+- no CI.
 
 ## 4. AI-assisted approach
 
@@ -158,5 +171,5 @@ No business rule changed.
 1. HTTP transport with OAuth token validation and membership mapping (SPEC §10).
 2. An append-only audit log.
 3. Ask the business the SPEC §11 questions: approval thresholds, fund purpose restrictions and releasing stale approvals.
-4. CI on Linux and Windows.
+4. CI on Linux and Windows (tests, coverage, mutation check).
 5. Pagination.
