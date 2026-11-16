@@ -132,7 +132,13 @@ No business rule changed.
 
 ## 6. Time spent
 
-_To be confirmed by the author._
+**About 1 h 40 min in total**, under the 3-hour limit:
+
+| Phase | Time |
+|---|---|
+| Reading the brief, requirements analysis, gap check with AI | ~25 min |
+| AI-assisted build: spec v1.0 and tasks T1–T9 (commit timestamps 18:44 → 19:05 in `git log`, SDK investigation before that) | ~45 min |
+| My own review and verification: reading spec and code, tracing requirements, running the demo and tests, README edits | ~30 min |
 
 ## 7. Limitations and next priorities
 
