@@ -1,0 +1,20 @@
+{
+  "_comment": "One server entry per fixture identity (identity is fixed per server process). Replace ABSOLUTE_PATH with this repo's path. Works with Claude Desktop/Claude Code style mcpServers config.",
+  "mcpServers": {
+    "funding-case-worker": {
+      "command": "uv",
+      "args": ["run", "--directory", "ABSOLUTE_PATH", "python", "-m", "funding_mcp.server"],
+      "env": { "FUNDING_STAFF_ID": "stf_cb_case_worker", "FUNDING_DB_PATH": "ABSOLUTE_PATH/data/funding.db" }
+    },
+    "funding-program-manager": {
+      "command": "uv",
+      "args": ["run", "--directory", "ABSOLUTE_PATH", "python", "-m", "funding_mcp.server"],
+      "env": { "FUNDING_STAFF_ID": "stf_cb_program_manager", "FUNDING_DB_PATH": "ABSOLUTE_PATH/data/funding.db" }
+    },
+    "funding-finance": {
+      "command": "uv",
+      "args": ["run", "--directory", "ABSOLUTE_PATH", "python", "-m", "funding_mcp.server"],
+      "env": { "FUNDING_STAFF_ID": "stf_cb_finance", "FUNDING_DB_PATH": "ABSOLUTE_PATH/data/funding.db" }
+    }
+  }
+}

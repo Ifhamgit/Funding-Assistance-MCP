@@ -41,3 +41,14 @@ Tool: Claude Code (Claude Opus 5.5) in VS Code. Running notes captured during th
   - restored → 125 passed.
 - **Correction found by doing this:** the first mutation run reported `not-run` because the thread swallowed non-domain
   exceptions. The harness now records `UNEXPECTED <type>: <message>`, so the failure states its cause.
+
+## 5. Verification — corrections to AI-written test tooling (T7/T8)
+
+- **Line endings:** the first version of `tools/mutate_approval_guard.py` restored files with `write_text`, which on
+  Windows rewrote LF as CRLF. Caught by `git status` showing `service.py`/`db.py` modified; `git diff --ignore-cr-at-eol`
+  proved it was line endings only. Fix: snapshot and restore exact bytes. Re-verified: after m1 and m2 runs, `git status` is clean.
+- **Raw JSON-RPC test:** the first AC-23 test wrote all messages and closed stdin immediately; the reply to the tool call
+  never arrived (`KeyError: 2`). The server's stderr showed `tool=list_funds … outcome=ok`, so the server had worked and the
+  test harness was wrong (EOF shut the server down before it wrote the reply). Fix: keep stdin open until the reply is read.
+- **Environment finding:** `uv run pytest` / `uv run funding-reset` failed with `os error 4551` (Windows Application Control
+  blocks uv's generated `.exe` launchers). Commands now use `python -m …` (SPEC changelog 1.1).

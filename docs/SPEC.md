@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **v1.0 — initial, approved for implementation** (revisions: see §12 Changelog) |
+| Status | **v1.1** — v1.0 was committed before implementation; revisions and reasons in §12 Changelog |
 | Scope | Headless MCP server for Community Bridge-style nonprofits: assistance requests, approvals, simulated payments, fund balances |
 | Audience | The engineer or AI coding agent implementing it, and its reviewers |
 
@@ -336,4 +336,9 @@ Seed contains no requests, so the demo reproduces the business-case example exac
 
 | Version | Date | Change | Reason |
 |---|---|---|---|
-| 1.0 | 2026-11-16 | Initial specification | — |
+| 1.0 | 2026-11-16 | Initial specification (committed before any code) | — |
+| 1.1 | 2026-11-16 | AC-10 extended: concurrent **duplicate** approvals of one request and concurrent payment retries must yield exactly one effect (rest replay) | R-14 retries can arrive concurrently, not only sequentially; the sequential tests alone would not catch a double effect |
+| 1.1 | 2026-11-16 | §5.3 clarified: an unknown **tool name** is reported by the MCP SDK's own error, not our envelope; identity is still checked first | The envelope covers tools we define; name resolution belongs to the protocol layer |
+| 1.1 | 2026-11-16 | AC-23 made concrete: drive the server with raw JSON-RPC and parse every stdout line as JSON-RPC; also assert the log line is on stderr | "E2E handshake succeeds" alone can't prove nothing else leaks to stdout |
+| 1.1 | 2026-11-16 | Commands documented as `uv run python -m funding_mcp.{seed,server}`; `funding-reset` / `funding-mcp` scripts remain as aliases | On the development machine, Windows Application Control blocked uv's generated `.exe` launchers (`os error 4551`) |
+| 1.1 | 2026-11-16 | Implementation note: Python 3.12, `mcp` 2.3.0 (`MCPServer`), SQLite (WAL). The SDK advertises empty `prompts`/`resources` capabilities by default; none are registered (out of scope) | Recorded for reviewers; no behavior change |
