@@ -28,3 +28,16 @@ Tool: Claude Code (Claude Opus 5.5) in VS Code. Running notes captured during th
 - **Change:** spec R-04 now requires rejecting unknown arguments (`VALIDATION_ERROR`), tested by AC-16. Silently ignoring a
   `role` argument is harmless today, but rejecting it makes the "arguments cannot grant permissions" rule explicit and testable.
 - **Evidence:** probe output recorded during SDK investigation (before T1).
+
+## 4. Verification — is the concurrency test able to fail? (T7)
+
+- **Concern:** a race test that passes proves nothing unless it fails against a racy implementation.
+- **Action:** `tools/mutate_approval_guard.py` rewrites approval as a naive read-check-then-write with no transaction
+  (`m1`), and additionally drops the DB CHECK (`m2`). The script runs the race tests and restores the code itself.
+- **Observed:**
+  - m1 → `IntegrityError: CHECK constraint failed … committed_cents + paid_cents <= allocation_cents`. The race is
+    real; the second layer (DB constraint) caught it.
+  - m2 → `ValueError: money amounts are never negative`. Available went below zero, i.e. the fund **was overspent**.
+  - restored → 125 passed.
+- **Correction found by doing this:** the first mutation run reported `not-run` because the thread swallowed non-domain
+  exceptions. The harness now records `UNEXPECTED <type>: <message>`, so the failure states its cause.
