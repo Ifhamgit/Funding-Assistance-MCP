@@ -1,0 +1,39 @@
+[project]
+name = "funding-mcp"
+version = "0.1.0"
+description = "Emergency Assistance Funding: headless MCP server (assistance requests, approvals, simulated payments, fund balances)"
+requires-python = ">=3.12,<3.13"
+# Exact pins; the full transitive set is locked in uv.lock.
+dependencies = [
+    "mcp==2.3.0",
+    "pydantic==2.14.3",
+]
+
+[project.scripts]
+funding-mcp = "funding_mcp.server:main"
+funding-reset = "funding_mcp.seed:main"
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "ruff==0.14.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.9,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "e2e: end-to-end tests that launch the MCP server over stdio",
+    "slow: concurrency stress tests",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
