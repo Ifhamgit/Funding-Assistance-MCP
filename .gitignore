@@ -11,3 +11,4 @@ data/
 .coverage
 .coverage.*
 htmlcov/
+.mcp.json
