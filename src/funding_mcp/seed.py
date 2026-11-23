@@ -1,4 +1,4 @@
-"""Setup/reset command (R-23): `uv run funding-reset`. Separate from server start.
+"""Setup/reset command (R-23): `uv run python -m funding_mcp.seed` (alias: `uv run funding-reset`).
 
 Drops and recreates all tables and loads the synthetic seed data from SPEC §9 in one transaction.
 """

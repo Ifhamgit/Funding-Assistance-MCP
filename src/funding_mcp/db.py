@@ -99,18 +99,20 @@ def connect(path: Path | str) -> sqlite3.Connection:
     return conn
 
 
+RESET_HINT = "Run `uv run python -m funding_mcp.seed` first (same database path)."
+
+
 def open_existing(path: Path | str) -> sqlite3.Connection:
-    """Open a database created by `funding-reset`; never creates or migrates (R-23)."""
+    """Open a database created by the reset command; never creates or migrates (R-23)."""
     path = Path(path)
     if not path.is_file():
-        raise DatabaseNotInitialized(f"Database {path} not found. Run `uv run funding-reset` first.")
+        raise DatabaseNotInitialized(f"Database {path} not found. {RESET_HINT}")
     conn = connect(path)
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     if version != SCHEMA_VERSION:
         conn.close()
         raise DatabaseNotInitialized(
-            f"Database {path} has schema version {version}, expected {SCHEMA_VERSION}. "
-            "Run `uv run funding-reset` first."
+            f"Database {path} has schema version {version}, expected {SCHEMA_VERSION}. {RESET_HINT}"
         )
     return conn
 

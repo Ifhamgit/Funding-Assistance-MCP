@@ -226,5 +226,6 @@ def test_server_refuses_to_start_without_initialized_db(tmp_path):
     )
     assert proc.returncode == 2
     assert proc.stdout == ""
-    assert "funding-reset" in proc.stderr
+    # The hint must be the command that works everywhere; the `funding-reset` .exe shim can be blocked (SPEC §12).
+    assert "uv run python -m funding_mcp.seed" in proc.stderr
     assert not missing.exists()

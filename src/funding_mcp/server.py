@@ -1,6 +1,6 @@
 """MCP server (stdio). Thin adapter: schemas + error envelope here, all business rules in `service`.
 
-Start:  FUNDING_STAFF_ID=stf_cb_case_worker uv run funding-mcp
+Start:  FUNDING_STAFF_ID=stf_cb_case_worker uv run python -m funding_mcp.server   (alias: uv run funding-mcp)
 Per call (SPEC §3.4): resolve identity -> reject unknown arguments -> SDK schema validation -> service.
 """
 

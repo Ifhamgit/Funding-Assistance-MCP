@@ -113,7 +113,7 @@ def test_db_rejects_invalid_request_values(conn, column, value):
 
 
 def test_reset_cli_uses_env_path(tmp_path):
-    """R-23: `funding-reset` is a standalone command driven by FUNDING_DB_PATH."""
+    """R-23: the reset command (`python -m funding_mcp.seed`) is standalone, driven by FUNDING_DB_PATH."""
     target = tmp_path / "cli.db"
     result = subprocess.run(
         [sys.executable, "-m", "funding_mcp.seed"],
